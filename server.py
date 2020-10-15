@@ -1,5 +1,5 @@
 import yfinance as yf
-from flask import Flask
+from flask import Flask, request
 from datetime import datetime
 import json
 import os
@@ -18,9 +18,8 @@ def get_balance():
     balance = json.loads(data)['balance']
     return balance
 
-@app.route('/invest')
-def invest(company, sum):
-    
+@app.route('/invest', methods=['POST'])
+def invest():
     # Parse json
     with open(DATABASE_FILENAME, 'r') as f:
         data = f.read()
@@ -28,18 +27,31 @@ def invest(company, sum):
     balance = json.loads(data)['balance']
     investments = json.loads(data)['investments']
 
+    # Parse request variables
+    company = request.form.get('company')
+    sum = request.form.get('sum')
+    if(sum is None):
+        sum = balance
+    else:
+        sum = int(sum)
+
     # Reduce Balance
     balance -= sum
+    
+    # Verify balance
+    if(balance < 0):
+        return f"Cannot get to negative balance {balance}"
 
     # Add Investment
     stock_price = get_current_stock_price(company)
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     investments.append({
         "company": company,
         "stock_price": stock_price,
         "sum": sum,
         "investment_timestamp": timestamp,
+        "withdrawl_cash": None,
         "active": True
     })
 
@@ -52,7 +64,7 @@ def invest(company, sum):
     
     return 'OK'
 
-@app.route('/cash_out')
+@app.route('/cash_out', methods=['POST'])
 def cash_out_last_investment():
     # Parse json
     with open(DATABASE_FILENAME, 'r') as f:
@@ -61,8 +73,18 @@ def cash_out_last_investment():
     balance = json.loads(data)['balance']
     investments = json.loads(data)['investments']
 
-    # Check current stock price
+    # Verify there are investments
+    if(len(investments) == 0):
+        return "No investments"
+
+    # Get last investment
     investment = investments[-1]
+
+    # Verify last investment
+    if(investment['active'] == False):
+        return "No active stock investment"
+
+    # Check current stock price
     current_stock_price = get_current_stock_price(investment['company'])
 
     # Calculate profit
@@ -74,6 +96,9 @@ def cash_out_last_investment():
 
     # Disable last investment
     investments[-1]['active'] = False
+
+    # Add cashout sum
+    investments[-1]['withdrawl_cash'] = withdrawl_cash
 
     # Save data to file
     with open(DATABASE_FILENAME, 'w') as f:

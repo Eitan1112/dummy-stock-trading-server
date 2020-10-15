@@ -1,11 +1,13 @@
 {
-    "balance": 0,
+    "balance": 100.01370253789533,
     "investments": [
         {
             "company": "msft",
-            "stock_price": 145.5,
+            "stock_price": 219.0399932861328,
             "sum": 100,
-            "timestamp": "2017-01-01 00:00:00"
+            "investment_timestamp": "2020-10-15 16:59:05",
+            "withdrawl_cash": 100.01370253789533,
+            "active": false
         }
     ]
 }
